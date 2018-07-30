@@ -1,0 +1,76 @@
+
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(RGtk2)
+library(rattle)
+library(randomForest)
+
+#Read in datasets
+Train <- read.csv("pml-training.csv")
+Test  <- read.csv("pml-testing.csv")
+
+summary(Train)
+summary(Test)
+
+#clean data for analysis
+features <- names(Test[,colSums(is.na(Test))==0]) [8:59]
+
+#Use features in the testing data
+Train <- Train [,c(features, "classe")]
+Test  <- Test [,c(features, "problem_id")]
+
+dim(Train)
+dim(Test)
+
+#Partition the data
+set.seed(129)
+
+p_Train <- createDataPartition (Train$classe, p =0.6, list = FALSE)
+
+trainset <- Train [p_Train, ]
+testset <- Train [-p_Train, ]
+
+dim(trainset)
+dim(testset)
+
+#Decision Tree Model
+DTmodel <- rpart(classe ~., data = trainset, method = "class")
+rattle::fancyRpartPlot (DTmodel)
+
+#Execute prediciton with DT model
+set.seed(129)
+
+outcome <- predict(DTmodel, testset, type = "class")
+confusionMatrix (outcome, testset$classe)
+
+#Random Forest Model
+set.seed(129)
+RFmodel <- randomForest(classe ~., data = trainset, ntree = 1000)
+
+#Execute prediction with RF model
+outcome <- predict(RFmodel, testset, type = "Class")
+confusionMatrix (outcome, testset$classe)
+
+#DT prediciton on test data
+DToutcomeTest <- predict(DTmodel, Test, type = "class")
+DToutcomeTest
+
+#RF prediction on test data
+RFoutcome <- predict(RFmodel, Test, type = "class")
+RFoutcome
+
+#Submission file
+
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(RFoutcome)
+
+ 
